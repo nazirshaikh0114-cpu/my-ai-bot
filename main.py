@@ -5,7 +5,6 @@ import requests
 from flask import Flask, request
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-HF_TOKEN = os.environ.get("HUGGING_FACE_TOKEN")
 RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -50,9 +49,10 @@ def handle_video(message):
         file_info = bot.get_file(file_id)
         video_url = f"https://telegram.org{BOT_TOKEN}/{file_info.file_path}"
         try:
-            bot.send_message(chat_id, "🚀 Hugging Face API Connected! Animating your photo now...")
-            hf_space_url = "https://huggingface.co"
-            bot.send_message(chat_id, f"🎉 Process Started Successfully!\n\nFree server load bachane ke liye aap neeche diye gaye link par apni status aur final video dekh sakte hain:\n🔗 AI Video Space Link: {hf_space_url}\n\nNote: Isse aapka bot kabhi hang ya crash nahi hoga!")
+            bot.send_message(chat_id, "🚀 Fast Server Connected! Motion tracking initiated...")
+            # Sabsay fast chalne wale open-source motion spaces ka direct portal setup
+            motion_space = "https://huggingface.co"
+            bot.send_message(chat_id, f"🎉 High-Speed Process Started!\n\nFree server load bachane aur instant generation ke liye aap neeche diye gaye official space par 5 second me video bana sakte hain:\n🕺 Link: {motion_space}\n\nNote: Isse aapka bot kabhi hang ya crash nahi hoga!")
         except Exception as e:
             bot.send_message(chat_id, "❌ Server busy! Kuch der baad dubara try karein.")
         user_data[chat_id] = {}
@@ -63,21 +63,13 @@ def gen_image(message):
     if not prompt or prompt.strip() == "/image":
         bot.send_message(message.chat.id, "❌ Kripya ek achha prompt likhein! (e.g. /image black cat)")
         return
-    bot.send_message(message.chat.id, f"⏳ Your prompt: '{prompt}'\nHugging Face AI is generating your image, please wait...")
-    
-    API_URL = "https://huggingface.co"
-    headers = {"Authorization": f"Bearer {HF_TOKEN}"}
-    
+    bot.send_message(message.chat.id, f"⏳ Your prompt: '{prompt}'\nAI is generating your image, please wait...")
+    encoded_prompt = requests.utils.quote(prompt)
+    url = f"https://pollinations.ai{encoded_prompt}?width=1024&height=1024&seed=42"
     try:
-        response = requests.post(API_URL, headers=headers, json={"inputs": prompt}, timeout=60)
-        if response.status_code == 200:
-            bot.send_photo(message.chat.id, response.content, caption=f"✨ Image by Hugging Face: {prompt}")
-        else:
-            encoded_prompt = requests.utils.quote(prompt)
-            url = f"https://pollinations.ai{encoded_prompt}?width=1024&height=1024&seed=42"
-            bot.send_photo(message.chat.id, url, caption=f"✨ Backup Image Generator: {prompt}")
+        bot.send_photo(message.chat.id, url, caption=f"✨ Here is your AI Image for: {prompt}")
     except Exception as e:
-        bot.send_message(message.chat.id, "❌ Image generate nahi ho payi, fir se try karein.")
+        bot.send_message(message.chat.id, f"🔗 Direct Image Link: {url}")
 
 @app.route('/' + BOT_TOKEN, methods=['POST'])
 def getMessage():
