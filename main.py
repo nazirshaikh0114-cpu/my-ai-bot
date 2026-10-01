@@ -4,8 +4,10 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
 from flask import Flask
 import threading
+import time
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+HF_TOKEN = os.environ.get("HUGGING_FACE_TOKEN")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 user_data = {}
@@ -39,17 +41,42 @@ def handle_photo(message):
         user_data[chat_id]["stage"] = "waiting_video"
         bot.send_message(chat_id, "✅ Photo mil gayi!\n\n2. Ab ek **10 seconds tak ki Reference Video** bhejiye jiska motion copy karna hai.")
 
+def process_video_background(chat_id, photo_url, video_url):
+    try:
+        # LivePortrait API Endpoint on Hugging Face
+        API_URL = "https://huggingface.co"
+        headers = {"Authorization": f"Bearer {HF_TOKEN}"}
+        payload = {
+            "inputs": {
+                "face_image": photo_url,
+                "driving_video": video_url
+            }
+        }
+        
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=120)
+        
+        if response.status_code == 200:
+            bot.send_message(chat_id, "🎉 Video taiyar ho gayi hai! Aapki chat me bhedi ja rhi hai...")
+            bot.send_video(chat_id, response.content, caption="🕺 Generated Motion Control Video!")
+        else:
+            bot.send_message(chat_id, "❌ Hugging Face Server busy hai ya queue lambi hai. Kuch der baad dubara try karein.")
+    except Exception as e:
+        bot.send_message(chat_id, "❌ Video processing me error aaya. Kripya fir se try karein.")
+
 @bot.message_handler(content_types=['video'])
 def handle_video(message):
     chat_id = message.chat.id
     if chat_id in user_data and user_data[chat_id].get("stage") == "waiting_video":
-        bot.send_message(chat_id, "⏳ Dono files mil gayi hain! Processing shuru ho rahi hai...")
-        try:
-            bot.send_message(chat_id, "🚀 Fast Server Connected! Motion tracking initiated...")
-            motion_space = "https://huggingface.co"
-            bot.send_message(chat_id, f"🎉 High-Speed Process Started!\n\nFree server load bachane aur instant generation ke liye aap neeche diye gaye official space link par click karke 5 second me video bana sakte hain:\n\n🕺 Link: {motion_space}\n\nNote: Isse aapka bot kabhi hang ya crash nahi hoga!")
-        except Exception as e:
-            bot.send_message(chat_id, "❌ Server busy! Kuch der baad dubara try karein.")
+        bot.send_message(chat_id, "⏳ Dono files mil gayi hain! Processing shuru ho rahi hai... Isme 1-2 minute lag sakte hain.")
+        
+        file_id = message.video.file_id
+        file_info = bot.get_file(file_id)
+        video_url = f"https://telegram.org{BOT_TOKEN}/{file_info.file_path}"
+        
+        photo_url = user_data[chat_id]["photo"]
+        
+        # Main bot crash na ho isliye processing alag background thread me chalegi
+        threading.Thread(target=process_video_background, args=(chat_id, photo_url, video_url)).start()
         user_data[chat_id] = {}
 
 @bot.message_handler(commands=['image'])
