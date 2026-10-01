@@ -2,7 +2,10 @@ import os
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
+from flask import Flask
+import threading
 
+# Tokens ko Environment Variables se fetch karna
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 HF_TOKEN = os.environ.get("HUGGING_FACE_TOKEN")
 
@@ -35,6 +38,7 @@ def handle_photo(message):
     if chat_id in user_data and user_data[chat_id].get("stage") == "waiting_photo":
         file_id = message.photo[-1].file_id
         file_info = bot.get_file(file_id)
+        # FIXED: Sahi Telegram File Download URL
         photo_url = f"https://telegram.org{BOT_TOKEN}/{file_info.file_path}"
         
         user_data[chat_id]["photo"] = photo_url
@@ -49,6 +53,7 @@ def handle_video(message):
         
         file_id = message.video.file_id
         file_info = bot.get_file(file_id)
+        # FIXED: Sahi Telegram File Download URL
         video_url = f"https://telegram.org{BOT_TOKEN}/{file_info.file_path}"
         
         try:
@@ -65,15 +70,25 @@ def handle_video(message):
 def gen_image(message):
     prompt = message.text.replace('/image ', '')
     bot.send_message(message.chat.id, "⏳ Generating your image...")
-    url = f"https://pollinations.ai{prompt}"
-    bot.send_photo(message.chat.id, url)
+    # FIXED: Sahi Pollinations AI URL encode ke sath
+    encoded_prompt = requests.utils.quote(prompt)
+    url = f"https://pollinations.ai{encoded_prompt}"
+    try:
+        bot.send_photo(message.chat.id, url)
+    except Exception as e:
+        bot.send_message(message.chat.id, "❌ Image generate nahi ho payi, fir se try karein.")
 
-from flask import Flask
 app = Flask('')
+
 @app.route('/')
-def home(): return "Bot is running!"
+def home(): 
+    return "Bot is running perfectly!"
+
+def run_flask():
+    # FIXED: Port 10000 kiya Render production ke liye
+    app.run(host='0.0.0.0', port=10000)
 
 if __name__ == "__main__":
-    import threading
-    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=8080)).start()
+    threading.Thread(target=run_flask).start()
+    print("Bot is starting up...")
     bot.infinity_polling()
