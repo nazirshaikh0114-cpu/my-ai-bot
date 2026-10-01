@@ -2,13 +2,12 @@ import os
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import requests
-from flask import Flask, request
+from flask import Flask
+import threading
 
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-RENDER_URL = os.environ.get("RENDER_EXTERNAL_URL")
 
 bot = telebot.TeleBot(BOT_TOKEN)
-app = Flask('')
 user_data = {}
 
 @bot.message_handler(commands=['start'])
@@ -45,14 +44,10 @@ def handle_video(message):
     chat_id = message.chat.id
     if chat_id in user_data and user_data[chat_id].get("stage") == "waiting_video":
         bot.send_message(chat_id, "⏳ Dono files mil gayi hain! Processing shuru ho rahi hai...")
-        file_id = message.video.file_id
-        file_info = bot.get_file(file_id)
-        video_url = f"https://telegram.org{BOT_TOKEN}/{file_info.file_path}"
         try:
             bot.send_message(chat_id, "🚀 Fast Server Connected! Motion tracking initiated...")
-            # Sabsay fast chalne wale open-source motion spaces ka direct portal setup
             motion_space = "https://huggingface.co"
-            bot.send_message(chat_id, f"🎉 High-Speed Process Started!\n\nFree server load bachane aur instant generation ke liye aap neeche diye gaye official space par 5 second me video bana sakte hain:\n🕺 Link: {motion_space}\n\nNote: Isse aapka bot kabhi hang ya crash nahi hoga!")
+            bot.send_message(chat_id, f"🎉 High-Speed Process Started!\n\nFree server load bachane aur instant generation ke liye aap neeche diye gaye official space link par click karke 5 second me video bana sakte hain:\n\n🕺 Link: {motion_space}\n\nNote: Isse aapka bot kabhi hang ya crash nahi hoga!")
         except Exception as e:
             bot.send_message(chat_id, "❌ Server busy! Kuch der baad dubara try karein.")
         user_data[chat_id] = {}
@@ -71,18 +66,16 @@ def gen_image(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"🔗 Direct Image Link: {url}")
 
-@app.route('/' + BOT_TOKEN, methods=['POST'])
-def getMessage():
-    json_string = request.get_data().decode('utf-8')
-    update = telebot.types.Update.de_json(json_string)
-    bot.process_new_updates([update])
-    return "!", 200
+app = Flask('')
 
-@app.route("/")
-def webhook():
-    bot.remove_webhook()
-    bot.set_webhook(url=RENDER_URL + '/' + BOT_TOKEN)
-    return "Bot is running perfectly with Webhook!", 200
+@app.route('/')
+def home(): 
+    return "Bot is running perfectly!"
+
+def run_flask():
+    app.run(host='0.0.0.0', port=10000)
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=10000)
+    threading.Thread(target=run_flask).start()
+    bot.remove_webhook() 
+    bot.infinity_polling()
