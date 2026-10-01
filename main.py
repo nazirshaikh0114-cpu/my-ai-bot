@@ -78,4 +78,4 @@ def run_flask():
 if __name__ == "__main__":
     threading.Thread(target=run_flask).start()
     bot.remove_webhook() 
-    bot.infinity_polling(skip_pending_updates=True)
+    bot.infinity_polling()
