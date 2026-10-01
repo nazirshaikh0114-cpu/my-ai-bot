@@ -5,13 +5,10 @@ import requests
 from flask import Flask
 import threading
 
-# Tokens ko Environment Variables se fetch karna
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 HF_TOKEN = os.environ.get("HUGGING_FACE_TOKEN")
 
 bot = telebot.TeleBot(BOT_TOKEN)
-
-# User data store karne ke liye temporary dictionary
 user_data = {}
 
 @bot.message_handler(commands=['start'])
@@ -38,9 +35,7 @@ def handle_photo(message):
     if chat_id in user_data and user_data[chat_id].get("stage") == "waiting_photo":
         file_id = message.photo[-1].file_id
         file_info = bot.get_file(file_id)
-        # FIXED: Sahi Telegram File Download URL
         photo_url = f"https://telegram.org{BOT_TOKEN}/{file_info.file_path}"
-        
         user_data[chat_id]["photo"] = photo_url
         user_data[chat_id]["stage"] = "waiting_video"
         bot.send_message(chat_id, "✅ Photo mil gayi!\n\n2. Ab ek **10 seconds tak ki Reference Video** bhejiye jiska motion copy karna hai.")
@@ -50,27 +45,20 @@ def handle_video(message):
     chat_id = message.chat.id
     if chat_id in user_data and user_data[chat_id].get("stage") == "waiting_video":
         bot.send_message(chat_id, "⏳ Dono files mil gayi hain! Processing shuru ho rahi hai... Isme 1-2 minute lag sakte hain.")
-        
         file_id = message.video.file_id
         file_info = bot.get_file(file_id)
-        # FIXED: Sahi Telegram File Download URL
         video_url = f"https://telegram.org{BOT_TOKEN}/{file_info.file_path}"
-        
         try:
             bot.send_message(chat_id, "🚀 AI Server connecting... Animating your photo now!")
-            # Yahan background processing logic setup complete hai
             bot.send_message(chat_id, "🎉 Process complete! Free server load ke hisab se final video file aapki chat me thodi der me load ho jayegi.")
         except Exception as e:
             bot.send_message(chat_id, "❌ Server busy! Kuch der baad dubara try karein.")
-        
-        # Reset user stage
         user_data[chat_id] = {}
 
 @bot.message_handler(commands=['image'])
 def gen_image(message):
     prompt = message.text.replace('/image ', '')
     bot.send_message(message.chat.id, "⏳ Generating your image...")
-    # FIXED: Sahi Pollinations AI URL encode ke sath
     encoded_prompt = requests.utils.quote(prompt)
     url = f"https://pollinations.ai{encoded_prompt}"
     try:
@@ -85,10 +73,9 @@ def home():
     return "Bot is running perfectly!"
 
 def run_flask():
-    # FIXED: Port 10000 kiya Render production ke liye
     app.run(host='0.0.0.0', port=10000)
 
 if __name__ == "__main__":
     threading.Thread(target=run_flask).start()
-    print("Bot is starting up...")
-    bot.infinity_polling()
+    bot.remove_webhook() 
+    bot.infinity_polling(skip_pending_updates=True)
